@@ -78,6 +78,29 @@
       #status {
         color: #888;
       }
+      .settings {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+        background: #252526;
+        padding: 15px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+      }
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .checkbox-group input {
+        cursor: pointer;
+      }
+      .checkbox-group span {
+        font-size: 0.9em;
+      }
     </style>
   </head>
   <body>
@@ -96,6 +119,33 @@
           placeholder="Output will appear here..."
         ></textarea>
       </div>
+    </div>
+
+    <div class="settings">
+      <label class="checkbox-group">
+        <input type="checkbox" id="optComments" checked />
+        <span>Remove Comments</span>
+      </label>
+      <label class="checkbox-group">
+        <input type="checkbox" id="optSvg" checked />
+        <span>Remove SVGs</span>
+      </label>
+      <label class="checkbox-group">
+        <input type="checkbox" id="optFramework" checked />
+        <span>Remove Framework Tags</span>
+      </label>
+      <label class="checkbox-group">
+        <input type="checkbox" id="optAria" checked />
+        <span>Remove aria-*</span>
+      </label>
+      <label class="checkbox-group">
+        <input type="checkbox" id="optClass" checked />
+        <span>Remove class</span>
+      </label>
+      <label class="checkbox-group">
+        <input type="checkbox" id="optStyle" />
+        <span>Remove style</span>
+      </label>
     </div>
 
     <div class="controls">
@@ -206,17 +256,31 @@
       function processHTML() {
         let html = inputArea.value;
 
+        // Options
+        const removeComments = document.getElementById("optComments").checked;
+        const removeSvg = document.getElementById("optSvg").checked;
+        const removeFramework = document.getElementById("optFramework").checked;
+        const removeAria = document.getElementById("optAria").checked;
+        const removeClass = document.getElementById("optClass").checked;
+        const removeStyle = document.getElementById("optStyle").checked;
+
         // 1. Regex Cleanups
-        // Remove comments <!-- ... -->
-        html = html.replace(/<!--[\s\S]*?-->/g, "");
-        // Remove svg <svg ...> </svg>
-        html = html.replace(/<svg[\s\S]*?<\/svg>/g, "");
-        // Remove ps-dom-if
-        html = html.replace(/<ps-dom-if[\s\S]*?<\/ps-dom-if>/g, "");
-        // Remove dom-if
-        html = html.replace(/<dom-if[\s\S]*?<\/dom-if>/g, "");
-        // Remove template
-        html = html.replace(/<template[\s\S]*?<\/template>/g, "");
+        if (removeComments) {
+          // Remove comments <!-- ... -->
+          html = html.replace(/<!--[\s\S]*?-->/g, "");
+        }
+        if (removeSvg) {
+          // Remove svg <svg ...> </svg>
+          html = html.replace(/<svg[\s\S]*?<\/svg>/g, "");
+        }
+        if (removeFramework) {
+          // Remove ps-dom-if
+          html = html.replace(/<ps-dom-if[\s\S]*?<\/ps-dom-if>/g, "");
+          // Remove dom-if
+          html = html.replace(/<dom-if[\s\S]*?<\/dom-if>/g, "");
+          // Remove template
+          html = html.replace(/<template[\s\S]*?<\/template>/g, "");
+        }
 
         // 2. DOM Parsing
         const parser = new DOMParser();
@@ -231,13 +295,13 @@
         elArray.forEach((el) => {
           const attrsToRemove = [];
           for (const attr of el.attributes) {
-            if (attr.name.startsWith("aria-")) {
+            if (removeAria && attr.name.startsWith("aria-")) {
               attrsToRemove.push(attr.name);
             }
-            if (attr.name === "style") {
+            if (removeStyle && attr.name === "style") {
               attrsToRemove.push(attr.name);
             }
-            if (attr.name === "class") {
+            if (removeClass && attr.name === "class") {
               attrsToRemove.push(attr.name);
             }
           }
