@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HTML Cleaner</title>
+    <style>
+      :root {
+        --bg-color: #1e1e1e;
+        --text-color: #d4d4d4;
+        --input-bg: #2d2d2d;
+        --border-color: #3e3e3e;
+        --button-bg: #0e639c;
+        --button-hover: #1177bb;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        box-sizing: border-box;
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+        flex: 1;
+        min-height: 0; /* logic for flex scrolling */
+      }
+      .pane {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      label {
+        margin-bottom: 10px;
+        font-weight: bold;
+        display: block;
+      }
+      textarea {
+        flex: 1;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        padding: 10px;
+        font-family: "Consolas", "Monaco", "Courier New", monospace;
+        resize: none;
+        outline: none;
+        border-radius: 4px;
+      }
+      .controls {
+        margin: 20px 0;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      button {
+        background-color: var(--button-bg);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+      button:hover {
+        background-color: var(--button-hover);
+      }
+      #status {
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>HTML Comment Cleaner</h1>
+
+    <div class="container">
+      <div class="pane">
+        <label for="input">Input HTML</label>
+        <textarea id="input" placeholder="Paste your HTML here..."></textarea>
+      </div>
+      <div class="pane">
+        <label for="output">Cleaned Output</label>
+        <textarea
+          id="output"
+          readonly
+          placeholder="Output will appear here..."
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="cleanBtn">Clean HTML</button>
+      <button id="copyBtn">Copy Output</button>
+      <span id="status"></span>
+    </div>
+
+    <script>
+      const cleanBtn = document.getElementById("cleanBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const inputArea = document.getElementById("input");
+      const outputArea = document.getElementById("output");
+      const statusSpan = document.getElementById("status");
+
+      function formatHTML(html) {
+        let formatted = "";
+        let indent = "";
+        // Simple robust regex-based formatter to preserve structure roughly like BeautifulSoup
+        // Note: A true parser-based formatter is safer but more complex to implement in vanilla JS minimal script.
+        // Using a simple tab-based indentation on tags.
+
+        // Normalize whitespace
+        html = html.replace(/\s+/g, " ").trim();
+
+        // Insert newlines matching tag boundaries
+        // This is a naive implementation but works for simple "prettify"
+        // Better: Walk the DOM and rebuild string.
+        return html; // Placeholder if we want to use the DOM walker below
+      }
+
+      // Better formatted serializer
+      function prettify(node, level = 0) {
+        let indent = " ".repeat(level * 4); // 4 spaces like BS4 default often is 1 or 2, but 4 is clear.
+        // Adjust to 1 space or match BS4? BS4 default is 1 space? No, usually it's structural.
+        // Let's use 2 spaces.
+        indent = " ".repeat(level * 1); // BS4 output often looks compact. Let's try 1.
+
+        let output = "";
+
+        // Text node
+        if (node.nodeType === 3) {
+          let text = node.textContent.trim();
+          if (text) {
+            output += text + "\n";
+          }
+          return output;
+        }
+
+        // Element node
+        if (node.nodeType === 1) {
+          let tagName = node.tagName.toLowerCase();
+
+          // Open tag
+          output += "\n" + indent + "<" + tagName;
+
+          // Attributes
+          for (let attr of node.attributes) {
+            output += ` ${attr.name}="${attr.value}"`;
+          }
+
+          // Self-closing void elements
+          const voidElements = [
+            "area",
+            "base",
+            "br",
+            "col",
+            "embed",
+            "hr",
+            "img",
+            "input",
+            "link",
+            "meta",
+            "param",
+            "source",
+            "track",
+            "wbr",
+          ];
+          if (voidElements.includes(tagName)) {
+            output += " />\n"; // BS4 might do > or /> dependent on parser.
+            return output;
+          }
+
+          output += ">";
+
+          // Children
+          let hasChildren = node.childNodes.length > 0;
+
+          // Check if it has only one text child - inline it? BS4 usually puts text on new line if prettify is called.
+          // We will just recurse.
+          for (let child of node.childNodes) {
+            output += prettify(child, level + 1);
+          }
+
+          // Close tag
+          // If it was text only, we might want to trim the previous newline?
+          // Simplest is always newline.
+          output += indent + "</" + tagName + ">\n";
+        }
+
+        return output;
+      }
+
+      // We need a robust walker that produces string directly to handle the whitespace logic better.
+      // Or simply use the browser's XMLSerializer and then regex format it?
+      // Let's try a custom string builder to match BS4 style.
+
+      function processHTML() {
+        let html = inputArea.value;
+
+        // 1. Regex Cleanups
+        // Remove comments <!-- ... -->
+        html = html.replace(/<!--[\s\S]*?-->/g, "");
+        // Remove svg <svg ...> </svg>
+        html = html.replace(/<svg[\s\S]*?<\/svg>/g, "");
+        // Remove ps-dom-if
+        html = html.replace(/<ps-dom-if[\s\S]*?<\/ps-dom-if>/g, "");
+        // Remove dom-if
+        html = html.replace(/<dom-if[\s\S]*?<\/dom-if>/g, "");
+        // Remove template
+        html = html.replace(/<template[\s\S]*?<\/template>/g, "");
+
+        // 2. DOM Parsing
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        // 3. Attribute Cleanup
+        // We use a tree walker or getElementsByTagName('*')
+        const elements = doc.getElementsByTagName("*");
+        // Convert to array because we might modify attributes which technically doesn't invalidate the element list but good practice
+        const elArray = Array.from(elements);
+
+        elArray.forEach((el) => {
+          const attrsToRemove = [];
+          for (const attr of el.attributes) {
+            if (attr.name.startsWith("aria-")) {
+              attrsToRemove.push(attr.name);
+            }
+            if (attr.name === "style") {
+              attrsToRemove.push(attr.name);
+            }
+            if (attr.name === "class") {
+              attrsToRemove.push(attr.name);
+            }
+          }
+          attrsToRemove.forEach((attrName) => el.removeAttribute(attrName));
+        });
+
+        // 4. Prettify
+        // Since DOMParser wraps fragments in <html><head><body>, we mainly care about body's children if input wasn't a full doc.
+        // If input didn't have <html>, parsing puts it in body.
+        // Let's check input strings. commonly fragments.
+        // We'll output the content of body.
+
+        // However, we want to pretty print.
+        // Let's implement a simple "pretty print" that adjusts indentation.
+        // Naive approach:
+
+        // Helper to serialize with formatting
+        function roughPrettify(root) {
+          let result = "";
+
+          function traverse(node, level) {
+            const indent = " ".repeat(level);
+
+            if (node.nodeType === Node.TEXT_NODE) {
+              const txt = node.textContent.trim();
+              if (txt) {
+                result += indent + txt + "\n";
+              }
+              return;
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const tagName = node.tagName.toLowerCase();
+              // Build open tag
+              let openTag = `<${tagName}`;
+              for (const attr of node.attributes) {
+                openTag += ` ${attr.name}="${attr.value}"`;
+              }
+
+              // Self closing
+              const voidElements = [
+                "area",
+                "base",
+                "br",
+                "col",
+                "embed",
+                "hr",
+                "img",
+                "input",
+                "link",
+                "meta",
+                "param",
+                "source",
+                "track",
+                "wbr",
+              ];
+              if (voidElements.includes(tagName)) {
+                result += indent + openTag + ">\n"; // HTML5 void tags don't strictly need /, but Python script might behave differently. BS4 standard HTML parser output: <br/>? No, usually <br>.
+                return;
+              }
+
+              openTag += ">";
+              result += indent + openTag + "\n";
+
+              // Children
+              for (const child of node.childNodes) {
+                traverse(child, level + 1);
+              }
+
+              result += indent + `</${tagName}>\n`;
+            }
+          }
+
+          // If the user input full html, doc.documentElement is what we want.
+          // If partial, doc.body.childNodes.
+
+          // Heuristic: Did input have <html> or <body>?
+          // If regex /<html/i.test(original_input), then output full doc.
+          // Else output body children.
+
+          if (/<html/i.test(inputArea.value)) {
+            traverse(doc.documentElement, 0);
+          } else {
+            for (const child of doc.body.childNodes) {
+              traverse(child, 0);
+            }
+          }
+
+          return result;
+        }
+
+        outputArea.value = roughPrettify(doc).trim();
+        statusSpan.textContent = "Cleaned!";
+        setTimeout(() => (statusSpan.textContent = ""), 2000);
+      }
+
+      cleanBtn.addEventListener("click", processHTML);
+
+      copyBtn.addEventListener("click", () => {
+        outputArea.select();
+        document.execCommand("copy"); // Fallback/simple
+        // navigator.clipboard.writeText(outputArea.value); // Modern
+        statusSpan.textContent = "Copied!";
+        setTimeout(() => (statusSpan.textContent = ""), 2000);
+      });
+    </script>
+  </body>
+</html>
