@@ -82,6 +82,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 15px;
+        margin-top: 10px;
         margin-bottom: 20px;
         background: #252526;
         padding: 15px;
@@ -322,13 +323,19 @@
         function roughPrettify(root) {
           let result = "";
 
+          function truncateLongData(str) {
+            return str.replace(/(data:[^\s"'\)]+)/g, (match) => {
+              return match.length > 50 ? "dat..." : match;
+            });
+          }
+
           function traverse(node, level) {
             const indent = " ".repeat(level);
 
             if (node.nodeType === Node.TEXT_NODE) {
               const txt = node.textContent.trim();
               if (txt) {
-                result += indent + txt + "\n";
+                result += indent + truncateLongData(txt) + "\n";
               }
               return;
             }
@@ -338,7 +345,7 @@
               // Build open tag
               let openTag = `<${tagName}`;
               for (const attr of node.attributes) {
-                openTag += ` ${attr.name}="${attr.value}"`;
+                openTag += ` ${attr.name}="${truncateLongData(attr.value)}"`;
               }
 
               // Self closing
@@ -359,7 +366,7 @@
                 "wbr",
               ];
               if (voidElements.includes(tagName)) {
-                result += indent + openTag + ">\n"; // HTML5 void tags don't strictly need /, but Python script might behave differently. BS4 standard HTML parser output: <br/>? No, usually <br>.
+                result += indent + openTag + ">\n";
                 return;
               }
 
